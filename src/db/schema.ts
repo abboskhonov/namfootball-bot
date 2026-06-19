@@ -23,12 +23,11 @@ export const teams = sqliteTable("teams", {
 export const players = sqliteTable("players", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   teamId: integer("team_id").notNull().references(() => teams.id),
-  telegramId: integer("telegram_id").notNull().unique(),
-  username: text("username"),
-  fullName: text("full_name").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
   passportFileId: text("passport_file_id").notNull(),
   phone: text("phone"),
-  status: text("status").notNull().default("pending"), // pending | approved | rejected
+  addedBy: integer("added_by").notNull(), // captain's telegram_id
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
 

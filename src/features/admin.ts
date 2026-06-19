@@ -481,9 +481,7 @@ async function showPlayers(ctx: Context) {
       .where(eq(schema.teams.id, p.teamId))
       .get();
 
-    const statusEmoji =
-      p.status === "approved" ? "✅" : p.status === "pending" ? "⏳" : "❌";
-    msg += `${statusEmoji} ${p.fullName} → ${team?.name ?? "Unknown"}\n`;
+    msg += `👤 ${p.firstName} ${p.lastName} → ${team?.name ?? "Unknown"}\n`;
   }
 
   const keyboard = new InlineKeyboard().text("🔙 Admin Panel", "admin_menu");

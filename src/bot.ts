@@ -7,8 +7,12 @@ import { eq } from "drizzle-orm";
 import { gate } from "./features/gate";
 import { setupLeagueCommands } from "./features/league";
 import { setupTeamCommands, createTeamConversation } from "./features/team";
-import { registrationConversation, setupRegistrationCommands } from "./features/registration";
 import { setupAdminCommands, isAdmin, showAdminMenu, createLeagueConversation } from "./features/admin";
+import {
+  setupTeamManagement,
+  addPlayerConversation,
+  editTeamNameConversation,
+} from "./features/team_management";
 
 // ── User main menu ──────────────────────────────────────────
 
@@ -17,8 +21,7 @@ function userMainKeyboard() {
     .text("🏆 Leagues", "user_leagues")
     .text("➕ Create Team", "user_create_team")
     .row()
-    .text("📝 Register", "user_register")
-    .text("📋 My Status", "user_status");
+    .text("👥 My Team", "my_team");
 }
 
 async function showUserMenu(ctx: Context) {
@@ -122,45 +125,6 @@ async function showTeamList(ctx: Context, leagueId: number) {
   });
 }
 
-async function showStatus(ctx: Context) {
-  const player = db
-    .select()
-    .from(schema.players)
-    .where(eq(schema.players.telegramId, ctx.from!.id))
-    .get();
-
-  if (!player) {
-    const msg = "📭 You haven't joined any team yet.\n\nJoin a team to get started!";
-    if (ctx.callbackQuery) {
-      await ctx.editMessageText(msg, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "user_menu"),
-      });
-    } else {
-      await ctx.reply(msg, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "user_menu"),
-      });
-    }
-    return;
-  }
-
-  const team = db.select().from(schema.teams).where(eq(schema.teams.id, player.teamId)).get();
-  const league = team ? db.select().from(schema.leagues).where(eq(schema.leagues.id, team.leagueId)).get() : null;
-
-  await ctx.reply(
-    `📋 *Your Status*\n\n` +
-    `Team: ${team?.name ?? "N/A"}\n` +
-    `League: ${league?.name ?? "N/A"}\n` +
-    `Name: ${player.fullName}\n` +
-    `Passport: ${player.passportFileId ? "✅ Uploaded" : "❌ Not uploaded"}\n` +
-    `Phone: ${player.phone ?? "❌ Not provided"}\n` +
-    `Status: *${player.status}*`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: new InlineKeyboard().text("🔙 Back", "user_menu"),
-    }
-  );
-}
-
 // ── Bot setup ────────────────────────────────────────────────
 
 async function setupCommandMenu(bot: Bot<Context>) {
@@ -171,7 +135,6 @@ async function setupCommandMenu(bot: Bot<Context>) {
     { command: "create_team", description: "Create a team for a league" },
     { command: "join", description: "Join a team with invite code" },
     { command: "register", description: "Register your player details" },
-    { command: "status", description: "Check your registration status" },
   ], { scope: { type: "default" } });
 
   for (const adminId of env.ADMIN_IDS) {
@@ -190,7 +153,8 @@ export async function createBot() {
 
   // ── plugins ──────────────────────────────────────────────
   bot.use(conversations());
-  bot.use(createConversation(registrationConversation));
+  bot.use(createConversation(addPlayerConversation));
+  bot.use(createConversation(editTeamNameConversation));
   bot.use(createConversation(createLeagueConversation));
   bot.use(createConversation(createTeamConversation));
 
@@ -200,8 +164,8 @@ export async function createBot() {
   // ── feature modules ──────────────────────────────────────
   setupLeagueCommands(bot);
   setupTeamCommands(bot);
-  setupRegistrationCommands(bot);
   setupAdminCommands(bot);
+  setupTeamManagement(bot);
 
   // ── User menu navigation ─────────────────────────────────
   bot.command("start", async (ctx) => {
@@ -235,14 +199,18 @@ export async function createBot() {
     await ctx.conversation.enter("createTeamConversation");
   });
 
-  bot.callbackQuery("user_register", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.conversation.enter("registration");
-  });
-
-  bot.callbackQuery("user_status", async (ctx) => {
-    await showStatus(ctx);
-    await ctx.answerCallbackQuery();
+  // ── Show invite code ─────────────────────────────────────
+  bot.callbackQuery("show_invite_code", async (ctx) => {
+    const team = db.select().from(schema.teams).where(eq(schema.teams.captainId, ctx.from!.id)).get();
+    if (team) {
+      await ctx.answerCallbackQuery();
+      await ctx.reply(
+        `📋 Invite code for *${team.name}*:\n\`/join ${team.inviteCode}\``,
+        { parse_mode: "Markdown" }
+      );
+    } else {
+      await ctx.answerCallbackQuery("❌ No team");
+    }
   });
 
   // ── help ──────────────────────────────────────────────────
