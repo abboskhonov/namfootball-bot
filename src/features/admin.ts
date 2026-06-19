@@ -5,6 +5,20 @@ import { db, schema } from "../db/db";
 import { env } from "../config";
 import { eq } from "drizzle-orm";
 
+// Helper: safely edit text, fallback to new message if the original has no text (e.g. photo)
+async function editOrReply(ctx: Context, text: string, extra?: any) {
+  if (ctx.callbackQuery) {
+    try {
+      await ctx.editMessageText(text, extra);
+    } catch {
+      // Message might be a photo with no text — send new message instead
+      await ctx.reply(text, extra);
+    }
+  } else {
+    await ctx.reply(text, extra);
+  }
+}
+
 export function isAdmin(ctx: Context): boolean {
   return env.ADMIN_IDS.includes(ctx.from?.id ?? 0);
 }
@@ -479,14 +493,9 @@ async function showPlayers(ctx: Context) {
   const allPlayers = db.select().from(schema.players).all();
 
   if (allPlayers.length === 0) {
-    const text = "📭 No registered players yet.";
-    if (ctx.callbackQuery) {
-      await ctx.editMessageText(text, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "admin_menu"),
-      });
-    } else {
-      await ctx.reply(text);
-    }
+    await editOrReply(ctx, "📭 Hali o'yinchilar yo'q.", {
+      reply_markup: new InlineKeyboard().text("🏠 Admin Panel", "admin_menu"),
+    });
     return;
   }
 
@@ -503,19 +512,13 @@ async function showPlayers(ctx: Context) {
   }
   keyboard.text("🏠 Admin Panel", "admin_menu");
 
-  const msg = `*🎮 Players* (${allPlayers.length})\n\nTap a player to view their details and ID photo.`;
-
-  if (ctx.callbackQuery) {
-    await ctx.editMessageText(msg, {
+  await editOrReply(ctx,
+    `*🎮 O'yinchilar* (${allPlayers.length})\n\nO'yinchini tanlang va uning ma'lumotlarini ko'ring.`,
+    {
       parse_mode: "Markdown",
       reply_markup: keyboard,
-    });
-  } else {
-    await ctx.reply(msg, {
-      parse_mode: "Markdown",
-      reply_markup: keyboard,
-    });
-  }
+    }
+  );
 }
 
 // ── Player detail with photo ────────────────────────────────
@@ -528,42 +531,19 @@ async function showPlayerDetail(ctx: Context, playerId: number) {
     .get();
 
   if (!player) {
-    await ctx.editMessageText("❌ Player not found.", {
-      reply_markup: new InlineKeyboard().text("🔙 Players", "admin_players"),
+    await editOrReply(ctx, "❌ O'yinchi topilmadi.", {
+      reply_markup: new InlineKeyboard().text("🔙 O'yinchilar", "admin_players"),
     });
     return;
   }
 
-  const team = db
-    .select()
-    .from(schema.teams)
-    .where(eq(schema.teams.id, player.teamId))
-    .get();
-
-  const league = team
-    ? db.select().from(schema.leagues).where(eq(schema.leagues.id, team.leagueId)).get()
-    : null;
-
-  const caption =
-    `👤 *${player.firstName} ${player.lastName}*\n\n` +
-    `Team: ${team?.name ?? "Unknown"}\n` +
-    `League: ${league?.name ?? "Unknown"}\n` +
-    `Phone: ${player.phone ?? "Not provided"}\n` +
-    `Added by: \`${player.addedBy}\``;
-
-  const keyboard = new InlineKeyboard()
-    .text("🔙 All Players", "admin_players")
-    .row()
-    .text("🔙 Admin Panel", "admin_menu");
-
-  // Send the ID photo with caption
-  await ctx.editMessageText(
+  await editOrReply(ctx,
     `${player.firstName}ning ID rasmini ko'rish uchun pastdagi tugmani bosing →`,
     {
       reply_markup: new InlineKeyboard()
         .text("📸 ID rasmni ko'rish", `admin_show_photo_${player.id}`)
         .row()
-        .text("🔙 All Players", "admin_players"),
+        .text("🔙 O'yinchilar", "admin_players"),
     }
   );
 }
