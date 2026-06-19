@@ -120,6 +120,19 @@ export function setupAdminCommands(bot: Bot<Context>) {
     await ctx.answerCallbackQuery();
   });
 
+  // ── View single player ──────────────────────────────────
+  bot.callbackQuery(/^admin_player_(\d+)$/, async (ctx) => {
+    if (!isAdmin(ctx)) return ctx.answerCallbackQuery("⛔");
+    await showPlayerDetail(ctx, Number(ctx.match![1]));
+    await ctx.answerCallbackQuery();
+  });
+
+  // ── View player ID photo ────────────────────────────────
+  bot.callbackQuery(/^admin_show_photo_(\d+)$/, async (ctx) => {
+    if (!isAdmin(ctx)) return ctx.answerCallbackQuery("⛔");
+    await showPhoto(ctx, Number(ctx.match![1]));
+  });
+
   // ── Keep text commands working too ───────────────────────
   bot.command("addleague", async (ctx) => {
     if (!isAdmin(ctx)) return ctx.reply("⛔ Admins only.");
@@ -458,6 +471,8 @@ async function rejectTeam(ctx: Context, teamId: number) {
 
 // ── Players list ────────────────────────────────────────────
 
+// ── Players list (button list) ──────────────────────────────
+
 async function showPlayers(ctx: Context) {
   const allPlayers = db.select().from(schema.players).all();
 
@@ -473,7 +488,7 @@ async function showPlayers(ctx: Context) {
     return;
   }
 
-  let msg = "*🎮 Registered Players*\n\n";
+  const keyboard = new InlineKeyboard();
   for (const p of allPlayers) {
     const team = db
       .select()
@@ -481,10 +496,12 @@ async function showPlayers(ctx: Context) {
       .where(eq(schema.teams.id, p.teamId))
       .get();
 
-    msg += `👤 ${p.firstName} ${p.lastName} → ${team?.name ?? "Unknown"}\n`;
+    keyboard.text(`👤 ${p.firstName} ${p.lastName} (${team?.name ?? "?"})`, `admin_player_${p.id}`);
+    keyboard.row();
   }
+  keyboard.text("🔙 Admin Panel", "admin_menu");
 
-  const keyboard = new InlineKeyboard().text("🔙 Admin Panel", "admin_menu");
+  const msg = `*🎮 Players* (${allPlayers.length})\n\nTap a player to view details.`;
 
   if (ctx.callbackQuery) {
     await ctx.editMessageText(msg, {
@@ -497,4 +514,92 @@ async function showPlayers(ctx: Context) {
       reply_markup: keyboard,
     });
   }
+}
+
+// ── Player detail with photo ────────────────────────────────
+
+async function showPlayerDetail(ctx: Context, playerId: number) {
+  const player = db
+    .select()
+    .from(schema.players)
+    .where(eq(schema.players.id, playerId))
+    .get();
+
+  if (!player) {
+    await ctx.editMessageText("❌ Player not found.", {
+      reply_markup: new InlineKeyboard().text("🔙 Players", "admin_players"),
+    });
+    return;
+  }
+
+  const team = db
+    .select()
+    .from(schema.teams)
+    .where(eq(schema.teams.id, player.teamId))
+    .get();
+
+  const league = team
+    ? db.select().from(schema.leagues).where(eq(schema.leagues.id, team.leagueId)).get()
+    : null;
+
+  const caption =
+    `👤 *${player.firstName} ${player.lastName}*\n\n` +
+    `Team: ${team?.name ?? "Unknown"}\n` +
+    `League: ${league?.name ?? "Unknown"}\n` +
+    `Phone: ${player.phone ?? "Not provided"}\n` +
+    `Added by: \`${player.addedBy}\``;
+
+  const keyboard = new InlineKeyboard()
+    .text("🔙 All Players", "admin_players")
+    .row()
+    .text("🔙 Admin Panel", "admin_menu");
+
+  // Send the ID photo with caption
+  await ctx.editMessageText(
+    `👤 Tap below to see ${player.firstName}'s ID photo →`,
+    {
+      reply_markup: new InlineKeyboard()
+        .text("📸 View ID Photo", `admin_show_photo_${player.id}`)
+        .row()
+        .text("🔙 All Players", "admin_players"),
+    }
+  );
+}
+
+async function showPhoto(ctx: Context, playerId: number) {
+  const player = db
+    .select()
+    .from(schema.players)
+    .where(eq(schema.players.id, playerId))
+    .get();
+
+  if (!player) {
+    await ctx.answerCallbackQuery("❌ Not found");
+    return;
+  }
+
+  const team = db
+    .select()
+    .from(schema.teams)
+    .where(eq(schema.teams.id, player.teamId))
+    .get();
+
+  const league = team
+    ? db.select().from(schema.leagues).where(eq(schema.leagues.id, team.leagueId)).get()
+    : null;
+
+  await ctx.answerCallbackQuery();
+
+  await ctx.replyWithPhoto(player.passportFileId, {
+    caption:
+      `👤 *${player.firstName} ${player.lastName}*\n\n` +
+      `Team: ${team?.name ?? "Unknown"}\n` +
+      `League: ${league?.name ?? "Unknown"}\n` +
+      `Phone: ${player.phone ?? "Not provided"}`,
+    parse_mode: "Markdown",
+    reply_markup: new InlineKeyboard()
+      .text("🔙 All Players", "admin_players")
+      .row()
+      .text("🔙 Admin Panel", "admin_menu"),
+  });
 }
