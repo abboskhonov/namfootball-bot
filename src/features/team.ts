@@ -203,7 +203,7 @@ async function handleCreateTeamText(ctx: Context, args: string) {
 
     await ctx.reply(
       `⏳ Team *"${teamName}"* created in *${league.name}*!\n\n` +
-      "Waiting for admin approval.",
+      "Admin tasdiqlashini kuting.",
       { parse_mode: "Markdown" }
     );
 

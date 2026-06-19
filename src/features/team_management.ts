@@ -19,53 +19,53 @@ export async function addPlayerConversation(
   );
 
   if (!team) {
-    await ctx.reply("❌ You don't have a team.");
+    await ctx.reply("❌ Sizning jamoangiz yo'q.");
     return;
   }
   if (team.status !== "approved") {
-    await ctx.reply("⏳ Your team hasn't been approved yet.");
+    await ctx.reply("⏳ Jamoangiz hali tasdiqlanmadi.");
     return;
   }
 
-  // Step 1: First name
-  await ctx.reply("📝 *Step 1/4: First Name*\n\nWhat's the player's first name?", {
+  // Step 1: Ism
+  await ctx.reply("📝 *1/4-qadam: Ism*\n\nO'yinchining ismini kiriting:", {
     parse_mode: "Markdown",
   });
   const fnCtx = await conversation.waitFor(":text");
   const firstName = fnCtx.msg?.text?.trim();
   if (!firstName || firstName.length < 1) {
-    await ctx.reply("❌ Please enter a valid first name (at least 1 character).");
+    await ctx.reply("❌ Iltimos, to'g'ri ism kiriting (kamida 1 belgi).");
     return;
   }
 
-  // Step 2: Last name
-  await ctx.reply("📝 *Step 2/4: Last Name*\n\nWhat's the player's last name?", {
+  // Step 2: Familiya
+  await ctx.reply("📝 *2/4-qadam: Familiya*\n\nO'yinchining familiyasini kiriting:", {
     parse_mode: "Markdown",
   });
   const lnCtx = await conversation.waitFor(":text");
   const lastName = lnCtx.msg?.text?.trim();
   if (!lastName || lastName.length < 1) {
-    await ctx.reply("❌ Please enter a valid last name (at least 1 character).");
+    await ctx.reply("❌ Iltimos, to'g'ri familiya kiriting (kamida 1 belgi).");
     return;
   }
 
-  // Step 3: ID photo
+  // Step 3: ID rasm
   await ctx.reply(
-    "📸 *Step 3/4: ID / Passport Photo*\n\n" +
-    "Send a clear photo of the player's ID or passport.",
+    "📸 *3/4-qadam: ID / Pasport rasmi*\n\n" +
+    "O'yinchining ID yoki pasportining aniq rasmini yuboring.",
     { parse_mode: "Markdown" }
   );
   const photoCtx = await conversation.waitFor(":photo");
   const photos = photoCtx.msg?.photo;
   if (!photos || photos.length === 0) {
-    await ctx.reply("❌ No photo received. Please send a photo of the ID.");
+    await ctx.reply("❌ Rasm qabul qilinmadi. Iltimos, ID rasmini yuboring.");
     return;
   }
   const fileId = photos[photos.length - 1].file_id;
 
   // Step 4: Phone (optional)
-  const skipKeyboard = new InlineKeyboard().text("⏭ Skip", "addplayer_skip_phone");
-  await ctx.reply("📞 *Step 4/4: Phone Number (optional)*\n\nEnter the player's phone number or tap Skip:", {
+  const skipKeyboard = new InlineKeyboard().text("⏭ O'tkazib yuborish", "addplayer_skip_phone");
+  await ctx.reply("📞 *4/4-qadam: Telefon raqam (ixtiyoriy)*\n\nO'yinchining telefon raqamini kiriting yoki O'tkazib yuborish-ni bosing:", {
     parse_mode: "Markdown",
     reply_markup: skipKeyboard,
   });
@@ -83,18 +83,18 @@ export async function addPlayerConversation(
     .text("✅ Confirm", "addplayer_confirm")
     .text("❌ Cancel", "addplayer_cancel");
   await ctx.reply(
-    `📋 *Review*\n\n` +
-    `Name: ${firstName} ${lastName}\n` +
-    `Phone: ${phone ?? "Not provided"}\n` +
-    `ID Photo: ✅ Uploaded\n\n` +
-    `Add this player to *${team.name}*?`,
+    `📋 *Tekshirish*\n\n` +
+    `Ism: ${firstName} ${lastName}\n` +
+    `Telefon: ${phone ?? "Kiritilmadi"}\n` +
+    `ID Rasm: ✅ Yuklandi\n\n` +
+    `Bu o'yinchini *${team.name}* jamoasiga qo'shamizmi?`,
     { parse_mode: "Markdown", reply_markup: confirmKb }
   );
 
   const confirmRes = await conversation.waitFor("callback_query:data");
   if (confirmRes.callbackQuery?.data === "addplayer_cancel") {
     await confirmRes.answerCallbackQuery();
-    await ctx.reply("❌ Cancelled.");
+    await ctx.reply("❌ Bekor qilindi.");
     return;
   }
   if (confirmRes.callbackQuery?.data === "addplayer_confirm") {
@@ -117,7 +117,7 @@ export async function addPlayerConversation(
     });
 
     await ctx.reply(
-      `✅ *${firstName} ${lastName}* added to ${team.name}!`,
+      `✅ *${firstName} ${lastName}* ${team.name} jamoasiga qo'shildi!`,
       { parse_mode: "Markdown" }
     );
 
@@ -251,7 +251,7 @@ async function showMyTeam(ctx: Context) {
 
   if (!team) {
     await ctx.editMessageText(
-      "📭 You don't have a team yet.\n\nTap *Create Team* to make one!",
+      "📭 Sizning jamoangiz yo'q.\n\n*Jamoa yaratish* tugmasini bosing!",
       {
         parse_mode: "Markdown",
         reply_markup: new InlineKeyboard()
@@ -410,19 +410,19 @@ async function deletePlayer(ctx: Context, playerId: number) {
     .get();
 
   if (!player || player.teamId !== team.id) {
-    await ctx.answerCallbackQuery("❌ Not found");
+    await ctx.answerCallbackQuery("❌ Topilmadi");
     return;
   }
 
   db.delete(schema.players).where(eq(schema.players.id, playerId)).run();
   await ctx.editMessageText(
-    `❌ *${player.firstName} ${player.lastName}* removed.`,
+    `❌ *${player.firstName} ${player.lastName}* o'chirildi.`,
     {
       parse_mode: "Markdown",
-      reply_markup: new InlineKeyboard().text("🔙 Players", "my_team_players"),
+      reply_markup: new InlineKeyboard().text("🔙 O'yinchilar", "my_team_players"),
     }
   );
-  await ctx.answerCallbackQuery("Player deleted.");
+  await ctx.answerCallbackQuery("O'yinchi o'chirildi.");
 }
 
 // ── Delete team ─────────────────────────────────────────────
@@ -435,7 +435,7 @@ async function deleteTeam(ctx: Context) {
     .get();
 
   if (!team) {
-    await ctx.answerCallbackQuery("❌ Team not found");
+    await ctx.answerCallbackQuery("❌ Jamoa topilmadi");
     return;
   }
 

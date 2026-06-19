@@ -18,17 +18,17 @@ import {
 
 function userMainKeyboard() {
   return new InlineKeyboard()
-    .text("🏆 Leagues", "user_leagues")
-    .text("➕ Create Team", "user_create_team")
+    .text("🏆 Ligi", "user_leagues")
+    .text("➕ Jamoa yaratish", "user_create_team")
     .row()
-    .text("👥 My Team", "my_team");
+    .text("👥 Mening jamoam", "my_team");
 }
 
 async function showUserMenu(ctx: Context) {
   await ctx.reply(
-    `👋 *Hey ${ctx.from?.first_name ?? "there"}!*\n\n` +
-    "Welcome to the *NamFootball Tournament Bot*.\n" +
-    "Pick an option below to get started:\n",
+    `👋 *Salom ${ctx.from?.first_name ?? "dost"}!*\n\n` +
+    "*NamFootball Tournament Bot* ga xush kelibsiz.\n" +
+    "Pastdagi tugmalardan birini tanlang:\n",
     {
       parse_mode: "Markdown",
       reply_markup: userMainKeyboard(),
@@ -44,7 +44,7 @@ async function showLeagues(ctx: Context) {
     .all();
 
   if (allLeagues.length === 0) {
-    const msg = "📭 *No active leagues yet.*\n\nCheck back later or ask an admin to create one.";
+    const msg = "📭 *Hozircha faol ligalar yo'q.*\n\nKeyinroq tekshiring yoki admindan yangi liga yaratishni so'rang.";
     if (ctx.callbackQuery) {
       await ctx.editMessageText(msg, {
         reply_markup: new InlineKeyboard().text("🏠 Home", "user_menu"),
@@ -61,9 +61,9 @@ async function showLeagues(ctx: Context) {
   for (const l of allLeagues) {
     keyboard.text(`🏆 ${l.name}`, `user_league_${l.id}`).row();
   }
-  keyboard.text("🏠 Home", "user_menu");
+  keyboard.text("🏠 Bosh sahifa", "user_menu");
 
-  const msg = "*🏆 Active Leagues*\n\nTap a league to see its teams:";
+  const msg = "*🏆 Faol Ligalar*\n\nLigani tanlang va jamoalarni ko'ring:";
   if (ctx.callbackQuery) {
     await ctx.editMessageText(msg, {
       parse_mode: "Markdown",
@@ -85,8 +85,8 @@ async function showTeamList(ctx: Context, leagueId: number) {
     .get();
 
   if (!league) {
-    await ctx.editMessageText("❌ League not found.", {
-      reply_markup: new InlineKeyboard().text("🔙 Leagues", "user_leagues"),
+    await ctx.editMessageText("❌ Liga topilmadi.", {
+      reply_markup: new InlineKeyboard().text("🔙 Ligi", "user_leagues"),
     });
     return;
   }
@@ -100,14 +100,14 @@ async function showTeamList(ctx: Context, leagueId: number) {
 
   if (teams.length === 0) {
     await ctx.editMessageText(
-      `📭 No teams in *${league.name}* yet.\n` +
-      "Be the first — tap Create Team!",
+      `📭 *${league.name}* ligasida hali jamoalar yo'q.\n` +
+      "Birinchi bo'lib jamoa yarating!",
       {
         parse_mode: "Markdown",
         reply_markup: new InlineKeyboard()
-          .text("➕ Create Team", "user_create_team")
+          .text("➕ Jamoa yaratish", "user_create_team")
           .row()
-          .text("🔙 Back", "user_leagues"),
+          .text("🔙 Orqaga", "user_leagues"),
       }
     );
     return;
@@ -116,16 +116,16 @@ async function showTeamList(ctx: Context, leagueId: number) {
   let msg = `🏆 *${league.name}*\n\n`;
   for (const t of teams) {
     const count = db.select().from(schema.players).where(eq(schema.players.teamId, t.id)).all().length;
-    msg += `• *${t.name}* — ${count} players\n`;
+    msg += `• *${t.name}* — ${count} ta o'yinchi\n`;
   }
-  msg += "\n\n_To join a team, contact its captain._";
+  msg += "\n\n_Jamoaga qo'shilish uchun kapitan bilan bog'lanining._";
 
   await ctx.editMessageText(msg, {
     parse_mode: "Markdown",
     reply_markup: new InlineKeyboard()
-      .text("➕ Create Team", "user_create_team")
+      .text("➕ Jamoa yaratish", "user_create_team")
       .row()
-      .text("🔙 Leagues", "user_leagues"),
+      .text("🔙 Ligi", "user_leagues"),
   });
 }
 
@@ -133,17 +133,17 @@ async function showTeamList(ctx: Context, leagueId: number) {
 
 async function setupCommandMenu(bot: Bot<Context>) {
   await bot.api.setMyCommands([
-    { command: "start", description: "🏠 Open main menu" },
-    { command: "help", description: "How this bot works" },
-    { command: "leagues", description: "View active leagues and teams" },
-    { command: "create_team", description: "Create a team for a league" },
+    { command: "start", description: "🏠 Bosh menyu" },
+    { command: "help", description: "Bot haqida ma'lumot" },
+    { command: "leagues", description: "Faol ligalar va jamoalar" },
+    { command: "create_team", description: "Yangi jamoa yaratish" },
   ], { scope: { type: "default" } });
 
   for (const adminId of env.ADMIN_IDS) {
     await bot.api.setMyCommands([
-      { command: "pending_teams", description: "Approve or reject teams" },
-      { command: "players", description: "View all players" },
-      { command: "admin", description: "⚙️ Open admin panel" },
+      { command: "pending_teams", description: "Jamoalarni tasdiqlash" },
+      { command: "players", description: "Barcha o'yinchilar" },
+      { command: "admin", description: "⚙️ Admin paneli" },
     ], { scope: { type: "chat", chat_id: adminId } });
   }
 }
@@ -180,8 +180,8 @@ export async function createBot() {
 
   bot.callbackQuery("user_menu", async (ctx) => {
     await ctx.editMessageText(
-      `👋 *Hey ${ctx.from?.first_name ?? "there"}!*\n\n` +
-      "Pick an option below:\n",
+      `👋 *Salom ${ctx.from?.first_name ?? "dost"}!*\n\n` +
+      "Quyidagi tugmalardan birini tanlang:\n",
       {
         parse_mode: "Markdown",
         reply_markup: userMainKeyboard(),
@@ -210,20 +210,20 @@ export async function createBot() {
     if (isAdmin(ctx)) {
       await ctx.reply(
         "⚙️ *NamFootball Bot*\n\n" +
-        "Tap /start to open the admin panel where you can:\n" +
-        "• Create and manage leagues\n" +
-        "• Approve or reject teams\n" +
-        "• View all registered players and their ID photos",
+        "/start tugmasini bosing va admin panelidan foydalaning:\n" +
+        "• 🏆 Liga yaratish va boshqarish\n" +
+        "• ✅ Jamoalarni tasdiqlash yoki rad etish\n" +
+        "• 👤 Barcha o'yinchilar va ularning ID rasmlarini ko'rish",
         { parse_mode: "Markdown" }
       );
     } else {
       await ctx.reply(
         "👋 *NamFootball Bot*\n\n" +
-        "Tap /start to open the main menu. From there you can:\n" +
-        "• 👀 Browse active leagues and teams\n" +
-        "• 🏆 Create your own team\n" +
-        "• 👥 Add players to your team (name, last name, ID photo)\n" +
-        "• ✏️ Edit or delete your team",
+        "/start tugmasini bosing va asosiy menyuni oching:\n" +
+        "• 👀 Faol ligalar va jamoalarni ko'rish\n" +
+        "• 🏆 O'z jamoangizni yaratish\n" +
+        "• 👥 O'yinchilarni qo'shish (ism, familiya, ID rasm)\n" +
+        "• ✏️ Jamoani tahrirlash yoki o'chirish",
         { parse_mode: "Markdown" }
       );
     }

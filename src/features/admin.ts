@@ -49,7 +49,7 @@ export async function createLeagueConversation(
     );
   } catch (err) {
     console.error("Failed to create league:", err);
-    await ctx.reply("❌ Failed to create league.");
+    await ctx.reply("❌ Liga yaratishda xatolik.");
   }
 }
 
@@ -62,7 +62,7 @@ export function setupAdminCommands(bot: Bot<Context>) {
 
   bot.callbackQuery("admin_menu", async (ctx) => {
     if (!isAdmin(ctx)) return ctx.answerCallbackQuery("⛔");
-    await ctx.editMessageText("*⚙️ Admin Panel*\n\nSelect a section:", {
+    await ctx.editMessageText("*⚙️ Admin Panel*\n\nBo'limni tanlang:", {
       parse_mode: "Markdown",
       reply_markup: adminMainKeyboard(),
     });
@@ -157,7 +157,7 @@ export function setupAdminCommands(bot: Bot<Context>) {
       });
     } catch (err) {
       console.error("Failed to create league:", err);
-      await ctx.reply("❌ Failed to create league.");
+      await ctx.reply("❌ Liga yaratishda xatolik.");
     }
   });
 
@@ -179,8 +179,8 @@ function adminMainKeyboard() {
     .text("🏆 Leagues", "admin_leagues")
     .text("👥 Pending Teams", "admin_teams_pending")
     .row()
-    .text("🎮 Players", "admin_players")
-    .text("➕ Create League", "admin_create_league");
+    .text("🎮 O'yinchilar", "admin_players")
+    .text("➕ Yangi liga", "admin_create_league");
 }
 
 // ── Show admin menu ─────────────────────────────────────────
@@ -196,9 +196,11 @@ export async function showAdminMenu(ctx: Context) {
 
   await ctx.reply(
     `*⚙️ Admin Panel*\n\n` +
-    `🏆 Leagues: ${leagueCount}\n` +
-    `👥 Pending teams: ${pendingCount}\n` +
-    `🎮 Players: ${playerCount}`,
+    `📊 *Statistika*\n` +
+    `🏆 Ligalar: ${leagueCount}\n` +
+    `⏳ Kutilayotgan: ${pendingCount}\n` +
+    `👤 O'yinchilar: ${playerCount}\n\n` +
+    `Bo'limni tanlang:`,
     {
       parse_mode: "Markdown",
       reply_markup: adminMainKeyboard(),
@@ -213,11 +215,11 @@ async function showLeaguesList(ctx: Context) {
 
   if (allLeagues.length === 0) {
     await ctx.editMessageText(
-      "📭 No leagues yet.\n\nTap *➕ Create League* to make one.",
+      "📭 Hali ligalar yo'q.\n\n*➕ Yangi liga* tugmasini bosing.",
       {
         parse_mode: "Markdown",
         reply_markup: new InlineKeyboard()
-          .text("➕ Create League", "admin_create_league")
+          .text("➕ Yangi liga", "admin_create_league")
           .row()
           .text("🔙 Back", "admin_menu"),
       }
@@ -233,7 +235,7 @@ async function showLeaguesList(ctx: Context) {
     );
     keyboard.row();
   }
-  keyboard.text("➕ Create League", "admin_create_league").row();
+  keyboard.text("➕ Yangi liga", "admin_create_league").row();
   keyboard.text("🏠 Admin Panel", "admin_menu");
 
   await ctx.editMessageText("*🏆 Leagues*\n\nTap a league to manage:", {
@@ -378,10 +380,10 @@ async function showPendingTeamDetail(ctx: Context, teamId: number) {
     .text("🔙 Pending Teams", "admin_teams_pending");
 
   await ctx.editMessageText(
-    `⏳ *Pending Team*\n\n` +
-    `Name: *${team.name}*\n` +
-    `League: ${league?.name ?? "Unknown"}\n` +
-    `Captain ID: \`${team.captainId}\``,
+    `⏳ *Kutilayotgan jamoa*\n\n` +
+    `Nomi: *${team.name}*\n` +
+    `Liga: ${league?.name ?? "Noma'lum"}\n` +
+    `Kapitan ID: \`${team.captainId}\``,
     {
       parse_mode: "Markdown",
       reply_markup: keyboard,
@@ -556,10 +558,10 @@ async function showPlayerDetail(ctx: Context, playerId: number) {
 
   // Send the ID photo with caption
   await ctx.editMessageText(
-    `👤 Tap below to see ${player.firstName}'s ID photo →`,
+    `${player.firstName}ning ID rasmini ko'rish uchun pastdagi tugmani bosing →`,
     {
       reply_markup: new InlineKeyboard()
-        .text("📸 View ID Photo", `admin_show_photo_${player.id}`)
+        .text("📸 ID rasmni ko'rish", `admin_show_photo_${player.id}`)
         .row()
         .text("🔙 All Players", "admin_players"),
     }
@@ -593,9 +595,9 @@ async function showPhoto(ctx: Context, playerId: number) {
   await ctx.replyWithPhoto(player.passportFileId, {
     caption:
       `👤 *${player.firstName} ${player.lastName}*\n\n` +
-      `Team: ${team?.name ?? "Unknown"}\n` +
-      `League: ${league?.name ?? "Unknown"}\n` +
-      `Phone: ${player.phone ?? "Not provided"}`,
+      `Jamoa: ${team?.name ?? "Noma'lum"}\n` +
+      `Liga: ${league?.name ?? "Noma'lum"}\n` +
+      `Telefon: ${player.phone ?? "Kiritilmadi"}`,
     parse_mode: "Markdown",
     reply_markup: new InlineKeyboard()
       .text("🔙 All Players", "admin_players")

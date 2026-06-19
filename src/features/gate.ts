@@ -18,8 +18,8 @@ export const gate: MiddlewareFn<Context> = async (ctx, next) => {
     const member = await ctx.api.getChatMember(env.GROUP_ID, userId);
     if (member.status === "left" || member.status === "kicked") {
       await ctx.reply(
-        "⛔ You need to join the private group first to use this bot.\n" +
-        "Join the group and try again."
+        "⛔ Ushbu botdan foydalanish uchun avval maxfiy guruhga qo'shilishingiz kerak.\n" +
+        "Guruhga qo'shilib, qayta urinib ko'ring."
       );
       return;
     }

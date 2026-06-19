@@ -13,7 +13,7 @@ export function setupLeagueCommands(bot: Bot<Context>) {
       .all();
 
     if (allLeagues.length === 0) {
-      return ctx.reply("📭 No active leagues right now.");
+      return ctx.reply("📭 Hozircha faol ligalar yo'q.");
     }
 
     const lines = allLeagues.map(
@@ -21,8 +21,8 @@ export function setupLeagueCommands(bot: Bot<Context>) {
     );
 
     await ctx.reply(
-      "*Active Leagues*\n\n" + lines.join("\n") +
-      "\n\nUse /create\\_team <league\\_id> <name> to create a team.",
+      "*Faol Ligalar*\n\n" + lines.join("\n") +
+      "\n\nJamoa yaratish uchun: /create\\_team <liga\\_id> <jamoa\\_nomi>",
       { parse_mode: "Markdown" }
     );
   });
