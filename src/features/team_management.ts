@@ -99,7 +99,7 @@ export async function addPlayerConversation(
   }
   if (confirmRes.callbackQuery?.data === "addplayer_confirm") {
     await confirmRes.answerCallbackQuery();
-    await conversation.external(() => {
+    const league = await conversation.external(() => {
       db.insert(schema.players).values({
         teamId: team.id,
         firstName,
@@ -108,11 +108,38 @@ export async function addPlayerConversation(
         phone,
         addedBy: ctx.from!.id,
       }).run();
+
+      return db
+        .select()
+        .from(schema.leagues)
+        .where(eq(schema.leagues.id, team.leagueId))
+        .get();
     });
+
     await ctx.reply(
       `✅ *${firstName} ${lastName}* added to ${team.name}!`,
       { parse_mode: "Markdown" }
     );
+
+    // Notify all admins
+    const admins = await conversation.external(() =>
+      db.select().from(schema.admins).all()
+    );
+
+    for (const admin of admins) {
+      try {
+        await ctx.api.sendPhoto(admin.telegramId, fileId, {
+          caption:
+            `📋 *New Player Added*\n\n` +
+            `Name: ${firstName} ${lastName}\n` +
+            `Team: ${team.name}\n` +
+            `League: ${league?.name ?? "Unknown"}\n` +
+            `Phone: ${phone ?? "N/A"}\n` +
+            `Added by: ${ctx.from?.first_name ?? "Captain"}`,
+          parse_mode: "Markdown",
+        });
+      } catch {}
+    }
   }
 }
 
