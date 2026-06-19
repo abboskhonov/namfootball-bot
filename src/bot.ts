@@ -86,7 +86,7 @@ async function showTeamList(ctx: Context, leagueId: number) {
 
   if (!league) {
     await ctx.editMessageText("❌ Liga topilmadi.", {
-      reply_markup: new InlineKeyboard().text("🔙 Ligi", "user_leagues"),
+      reply_markup: new InlineKeyboard().text("🔙 Ligalar", "user_leagues"),
     });
     return;
   }
@@ -125,7 +125,7 @@ async function showTeamList(ctx: Context, leagueId: number) {
     reply_markup: new InlineKeyboard()
       .text("➕ Jamoa yaratish", "user_create_team")
       .row()
-      .text("🔙 Ligi", "user_leagues"),
+      .text("🔙 Ligalar", "user_leagues"),
   });
 }
 
