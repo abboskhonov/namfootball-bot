@@ -26,9 +26,13 @@ function userMainKeyboard() {
 
 async function showUserMenu(ctx: Context) {
   await ctx.reply(
-    `👋 Welcome, ${ctx.from?.first_name ?? "there"}!\n\n` +
-    "Tap a button below:",
-    { reply_markup: userMainKeyboard() }
+    `👋 *Hey ${ctx.from?.first_name ?? "there"}!*\n\n` +
+    "Welcome to the *NamFootball Tournament Bot*.\n" +
+    "Pick an option below to get started:\n",
+    {
+      parse_mode: "Markdown",
+      reply_markup: userMainKeyboard(),
+    }
   );
 }
 
@@ -40,14 +44,14 @@ async function showLeagues(ctx: Context) {
     .all();
 
   if (allLeagues.length === 0) {
-    const msg = "📭 No active leagues right now.";
+    const msg = "📭 *No active leagues yet.*\n\nCheck back later or ask an admin to create one.";
     if (ctx.callbackQuery) {
       await ctx.editMessageText(msg, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "user_menu"),
+        reply_markup: new InlineKeyboard().text("🏠 Home", "user_menu"),
       });
     } else {
       await ctx.reply(msg, {
-        reply_markup: new InlineKeyboard().text("🔙 Back", "user_menu"),
+        reply_markup: new InlineKeyboard().text("🏠 Home", "user_menu"),
       });
     }
     return;
@@ -57,9 +61,9 @@ async function showLeagues(ctx: Context) {
   for (const l of allLeagues) {
     keyboard.text(`🏆 ${l.name}`, `user_league_${l.id}`).row();
   }
-  keyboard.text("🔙 Back", "user_menu");
+  keyboard.text("🏠 Home", "user_menu");
 
-  const msg = "*Active Leagues*\n\nTap a league to see its teams.";
+  const msg = "*🏆 Active Leagues*\n\nTap a league to see its teams:";
   if (ctx.callbackQuery) {
     await ctx.editMessageText(msg, {
       parse_mode: "Markdown",
@@ -103,18 +107,18 @@ async function showTeamList(ctx: Context, leagueId: number) {
         reply_markup: new InlineKeyboard()
           .text("➕ Create Team", "user_create_team")
           .row()
-          .text("🔙 Leagues", "user_leagues"),
+          .text("🔙 Back", "user_leagues"),
       }
     );
     return;
   }
 
-  let msg = `🏆 *${league.name}* — Teams\n\n`;
+  let msg = `🏆 *${league.name}*\n\n`;
   for (const t of teams) {
     const count = db.select().from(schema.players).where(eq(schema.players.teamId, t.id)).all().length;
     msg += `• *${t.name}* — ${count} players\n`;
   }
-  msg += "\nJoin a team: ask the captain for the invite code and use /join <code>";
+  msg += "\n\n_To join a team, contact its captain._";
 
   await ctx.editMessageText(msg, {
     parse_mode: "Markdown",
@@ -129,19 +133,17 @@ async function showTeamList(ctx: Context, leagueId: number) {
 
 async function setupCommandMenu(bot: Bot<Context>) {
   await bot.api.setMyCommands([
-    { command: "start", description: "Start the bot" },
-    { command: "help", description: "Show available commands" },
-    { command: "leagues", description: "View active leagues" },
+    { command: "start", description: "🏠 Open main menu" },
+    { command: "help", description: "How this bot works" },
+    { command: "leagues", description: "View active leagues and teams" },
     { command: "create_team", description: "Create a team for a league" },
-    { command: "join", description: "Join a team with invite code" },
-    { command: "register", description: "Register your player details" },
   ], { scope: { type: "default" } });
 
   for (const adminId of env.ADMIN_IDS) {
     await bot.api.setMyCommands([
       { command: "pending_teams", description: "Approve or reject teams" },
-      { command: "players", description: "View registered players" },
-      { command: "admin", description: "Admin panel" },
+      { command: "players", description: "View all players" },
+      { command: "admin", description: "⚙️ Open admin panel" },
     ], { scope: { type: "chat", chat_id: adminId } });
   }
 }
@@ -178,8 +180,12 @@ export async function createBot() {
 
   bot.callbackQuery("user_menu", async (ctx) => {
     await ctx.editMessageText(
-      `👋 Welcome, ${ctx.from?.first_name ?? "there"}!\n\nTap a button below:`,
-      { reply_markup: userMainKeyboard() }
+      `👋 *Hey ${ctx.from?.first_name ?? "there"}!*\n\n` +
+      "Pick an option below:\n",
+      {
+        parse_mode: "Markdown",
+        reply_markup: userMainKeyboard(),
+      }
     );
     await ctx.answerCallbackQuery();
   });
@@ -199,31 +205,26 @@ export async function createBot() {
     await ctx.conversation.enter("createTeamConversation");
   });
 
-  // ── Show invite code ─────────────────────────────────────
-  bot.callbackQuery("show_invite_code", async (ctx) => {
-    const team = db.select().from(schema.teams).where(eq(schema.teams.captainId, ctx.from!.id)).get();
-    if (team) {
-      await ctx.answerCallbackQuery();
-      await ctx.reply(
-        `📋 Invite code for *${team.name}*:\n\`/join ${team.inviteCode}\``,
-        { parse_mode: "Markdown" }
-      );
-    } else {
-      await ctx.answerCallbackQuery("❌ No team");
-    }
-  });
-
   // ── help ──────────────────────────────────────────────────
   bot.command("help", async (ctx) => {
     if (isAdmin(ctx)) {
-      await ctx.reply("Tap /start to open the admin panel.");
+      await ctx.reply(
+        "⚙️ *NamFootball Bot*\n\n" +
+        "Tap /start to open the admin panel where you can:\n" +
+        "• Create and manage leagues\n" +
+        "• Approve or reject teams\n" +
+        "• View all registered players and their ID photos",
+        { parse_mode: "Markdown" }
+      );
     } else {
       await ctx.reply(
-        "Tap /start to open the main menu.\n\n" +
-        "You can also type commands directly:\n" +
-        "/leagues — Browse leagues\n" +
-        "/join <code> — Join a team\n" +
-        "/status — Your registration status"
+        "👋 *NamFootball Bot*\n\n" +
+        "Tap /start to open the main menu. From there you can:\n" +
+        "• 👀 Browse active leagues and teams\n" +
+        "• 🏆 Create your own team\n" +
+        "• 👥 Add players to your team (name, last name, ID photo)\n" +
+        "• ✏️ Edit or delete your team",
+        { parse_mode: "Markdown" }
       );
     }
   });

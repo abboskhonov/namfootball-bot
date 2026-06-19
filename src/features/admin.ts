@@ -234,7 +234,7 @@ async function showLeaguesList(ctx: Context) {
     keyboard.row();
   }
   keyboard.text("➕ Create League", "admin_create_league").row();
-  keyboard.text("🔙 Back", "admin_menu");
+  keyboard.text("🏠 Admin Panel", "admin_menu");
 
   await ctx.editMessageText("*🏆 Leagues*\n\nTap a league to manage:", {
     parse_mode: "Markdown",
@@ -331,10 +331,10 @@ async function showPendingTeams(ctx: Context) {
     );
     keyboard.row();
   }
-  keyboard.text("🔙 Back", "admin_menu");
+  keyboard.text("🏠 Admin Panel", "admin_menu");
 
-  const text = `*👥 Pending Teams*
-\n${pending.length} team${pending.length > 1 ? "s" : ""} awaiting review. Tap to view.`;
+  const text = `*⏳ Pending Teams*
+\n${pending.length} team${pending.length > 1 ? "s" : ""} waiting for your decision. Tap a team.`;
 
   if (ctx.callbackQuery) {
     await ctx.editMessageText(text, {
@@ -499,9 +499,9 @@ async function showPlayers(ctx: Context) {
     keyboard.text(`👤 ${p.firstName} ${p.lastName} (${team?.name ?? "?"})`, `admin_player_${p.id}`);
     keyboard.row();
   }
-  keyboard.text("🔙 Admin Panel", "admin_menu");
+  keyboard.text("🏠 Admin Panel", "admin_menu");
 
-  const msg = `*🎮 Players* (${allPlayers.length})\n\nTap a player to view details.`;
+  const msg = `*🎮 Players* (${allPlayers.length})\n\nTap a player to view their details and ID photo.`;
 
   if (ctx.callbackQuery) {
     await ctx.editMessageText(msg, {

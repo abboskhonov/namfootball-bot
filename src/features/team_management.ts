@@ -28,24 +28,24 @@ export async function addPlayerConversation(
   }
 
   // Step 1: First name
-  await ctx.reply("📝 *Step 1/4: First Name*\n\nEnter the player's first name:", {
+  await ctx.reply("📝 *Step 1/4: First Name*\n\nWhat's the player's first name?", {
     parse_mode: "Markdown",
   });
   const fnCtx = await conversation.waitFor(":text");
   const firstName = fnCtx.msg?.text?.trim();
   if (!firstName || firstName.length < 1) {
-    await ctx.reply("❌ Invalid name.");
+    await ctx.reply("❌ Please enter a valid first name (at least 1 character).");
     return;
   }
 
   // Step 2: Last name
-  await ctx.reply("📝 *Step 2/4: Last Name*\n\nEnter the player's last name:", {
+  await ctx.reply("📝 *Step 2/4: Last Name*\n\nWhat's the player's last name?", {
     parse_mode: "Markdown",
   });
   const lnCtx = await conversation.waitFor(":text");
   const lastName = lnCtx.msg?.text?.trim();
   if (!lastName || lastName.length < 1) {
-    await ctx.reply("❌ Invalid name.");
+    await ctx.reply("❌ Please enter a valid last name (at least 1 character).");
     return;
   }
 
@@ -58,14 +58,14 @@ export async function addPlayerConversation(
   const photoCtx = await conversation.waitFor(":photo");
   const photos = photoCtx.msg?.photo;
   if (!photos || photos.length === 0) {
-    await ctx.reply("❌ Please send a photo.");
+    await ctx.reply("❌ No photo received. Please send a photo of the ID.");
     return;
   }
   const fileId = photos[photos.length - 1].file_id;
 
   // Step 4: Phone (optional)
   const skipKeyboard = new InlineKeyboard().text("⏭ Skip", "addplayer_skip_phone");
-  await ctx.reply("📞 *Step 4/4: Phone Number (optional)*\n\nSend phone or tap Skip.", {
+  await ctx.reply("📞 *Step 4/4: Phone Number (optional)*\n\nEnter the player's phone number or tap Skip:", {
     parse_mode: "Markdown",
     reply_markup: skipKeyboard,
   });
@@ -158,20 +158,20 @@ export async function editTeamNameConversation(
   }
 
   await ctx.reply(
-    `✏️ Current name: *${team.name}*\n\nSend the new team name:`,
+    `✏️ *Edit Team Name*\n\nCurrent name: *${team.name}*\n\nSend the new name:`,
     { parse_mode: "Markdown" }
   );
   const nameCtx = await conversation.waitFor(":text");
   const newName = nameCtx.msg?.text?.trim();
   if (!newName || newName.length < 2) {
-    await ctx.reply("❌ Name too short.");
+    await ctx.reply("❌ Name must be at least 2 characters.");
     return;
   }
 
   await conversation.external(() => {
     db.update(schema.teams).set({ name: newName }).where(eq(schema.teams.id, team.id)).run();
   });
-  await ctx.reply(`✅ Team renamed to *${newName}*!`, { parse_mode: "Markdown" });
+  await ctx.reply(`✅ Team name changed to *${newName}*!`, { parse_mode: "Markdown" });
 }
 
 // ── Setup ────────────────────────────────────────────────────
@@ -200,8 +200,30 @@ export function setupTeamManagement(bot: Bot<Context>) {
     await deletePlayer(ctx, Number(ctx.match![1]));
   });
 
-  // ── Delete team ─────────────────────────────────────────
+  // ── Delete team (with confirmation) ────────────────────
   bot.callbackQuery("delete_team_confirm", async (ctx) => {
+    const team = db.select().from(schema.teams).where(eq(schema.teams.captainId, ctx.from!.id)).get();
+    if (!team) {
+      await ctx.answerCallbackQuery("❌ No team");
+      return;
+    }
+
+    await ctx.editMessageText(
+      `⚠️ *Delete "${team.name}"?*\n\n` +
+      `This will permanently delete the team and all ${db.select().from(schema.players).where(eq(schema.players.teamId, team.id)).all().length} players.\n\n` +
+      `Are you sure?`,
+      {
+        parse_mode: "Markdown",
+        reply_markup: new InlineKeyboard()
+          .text("✅ Yes, delete", "delete_team_yes")
+          .row()
+          .text("❌ Cancel", "my_team"),
+      }
+    );
+    await ctx.answerCallbackQuery();
+  });
+
+  bot.callbackQuery("delete_team_yes", async (ctx) => {
     await deleteTeam(ctx);
   });
 
@@ -261,21 +283,15 @@ async function showMyTeam(ctx: Context) {
     .text("✏️ Edit Name", "edit_team_name")
     .row()
     .text("📋 Players", "my_team_players")
-    .row();
-
-  if (team.status === "approved") {
-    keyboard.text("📋 Invite Code", "show_invite_code");
-    keyboard.row();
-  }
-
-  keyboard.text("❌ Delete Team", "delete_team_confirm")
     .row()
-    .text("🔙 Back", "user_menu");
+    .text("❌ Delete Team", "delete_team_confirm")
+    .row()
+    .text("🏠 Home", "user_menu");
 
   await ctx.editMessageText(
-    `👥 *${team.name}* ${statusEmoji}\n` +
-    `League: ${league?.name ?? "Unknown"}\n` +
-    `Players: ${playerCount}\n`,
+    `👥 *${team.name}* ${statusEmoji}\n\n` +
+    `📌 League: ${league?.name ?? "Unknown"}\n` +
+    `👤 Players: ${playerCount}\n`,
     { parse_mode: "Markdown", reply_markup: keyboard }
   );
 }
@@ -423,15 +439,20 @@ async function deleteTeam(ctx: Context) {
     return;
   }
 
-  // Delete all players first, then team
+  const playerCount = db
+    .select()
+    .from(schema.players)
+    .where(eq(schema.players.teamId, team.id))
+    .all().length;
+
   db.delete(schema.players).where(eq(schema.players.teamId, team.id)).run();
   db.delete(schema.teams).where(eq(schema.teams.id, team.id)).run();
 
   await ctx.editMessageText(
-    `❌ *${team.name}* has been deleted along with all its players.`,
+    `🗑 *${team.name}* deleted.\n${playerCount} player${playerCount !== 1 ? "s" : ""} removed.`,
     {
       parse_mode: "Markdown",
-      reply_markup: new InlineKeyboard().text("🔙 Back", "user_menu"),
+      reply_markup: new InlineKeyboard().text("🏠 Home", "user_menu"),
     }
   );
   await ctx.answerCallbackQuery("Team deleted.");
